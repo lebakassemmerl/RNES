@@ -5,9 +5,7 @@ use std::marker::PhantomData;
 
 macro_rules! register_instruction_set {
 	($instr:ident, $bit:ident, $state:ident) => {
-		pub struct $instr<A> {
-			phantom: PhantomData<A>,
-		}
+		pub struct $instr<A>(PhantomData<A>);
 
 		impl<B: CpuBus, A: AddressMode<B>> Operation<B> for $instr<A> {
 			fn exec(cpu: &mut Cpu<B>, _mem: &mut B, _addr: Option<usize>) -> Option<usize> {
@@ -26,9 +24,7 @@ macro_rules! register_instruction_set {
 
 macro_rules! register_instruction_compare {
 	($instr:ident, $register:ident, $name:expr) => {
-		pub struct $instr<A> {
-			phantom: PhantomData<A>,
-		}
+		pub struct $instr<A>(PhantomData<A>);
 
 		impl<B: CpuBus, A: AddressMode<B>> Operation<B> for $instr<A> {
 			fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {

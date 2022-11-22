@@ -3,21 +3,10 @@ use crate::cpu::Cpu;
 use crate::mem::CpuBus;
 use std::marker::PhantomData;
 
-pub struct Jmp<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Jsr<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Rti<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Rts<A> {
-	phantom: PhantomData<A>,
-}
+pub struct Jmp<A>(PhantomData<A>);
+pub struct Jsr<A>(PhantomData<A>);
+pub struct Rti<A>(PhantomData<A>);
+pub struct Rts<A>(PhantomData<A>);
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Jmp<A> {
 	fn exec(cpu: &mut Cpu<B>, _mem: &mut B, addr: Option<usize>) -> Option<usize> {

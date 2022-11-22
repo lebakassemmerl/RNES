@@ -3,37 +3,14 @@ use crate::cpu::Cpu;
 use crate::mem::CpuBus;
 use std::marker::PhantomData;
 
-pub struct Adc<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Dec<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Dex<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Dey<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Inc<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Inx<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Iny<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Sbc<A> {
-	phantom: PhantomData<A>,
-}
+pub struct Adc<A>(PhantomData<A>);
+pub struct Dec<A>(PhantomData<A>);
+pub struct Dex<A>(PhantomData<A>);
+pub struct Dey<A>(PhantomData<A>);
+pub struct Inc<A>(PhantomData<A>);
+pub struct Inx<A>(PhantomData<A>);
+pub struct Iny<A>(PhantomData<A>);
+pub struct Sbc<A>(PhantomData<A>);
 
 // ADC
 

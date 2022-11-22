@@ -3,58 +3,22 @@ use crate::cpu::Cpu;
 use crate::mem::CpuBus;
 use std::marker::PhantomData;
 
-pub struct And<A> {
-	phantom: PhantomData<A>,
-}
-
+pub struct And<A>(PhantomData<A>);
 // create own instruction for left-shifting the accumulator
-pub struct AslA<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Asl<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Bit<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Eor<A> {
-	phantom: PhantomData<A>,
-}
-
+pub struct AslA<A>(PhantomData<A>);
+pub struct Asl<A>(PhantomData<A>);
+pub struct Bit<A>(PhantomData<A>);
+pub struct Eor<A>(PhantomData<A>);
 // create own instruction for right-shifting the accumulator
-pub struct LsrA<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Lsr<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Ora<A> {
-	phantom: PhantomData<A>,
-}
-
+pub struct LsrA<A>(PhantomData<A>);
+pub struct Lsr<A>(PhantomData<A>);
+pub struct Ora<A>(PhantomData<A>);
 // create own instruction for left-rotating the accumulator
-pub struct RolA<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Rol<A> {
-	phantom: PhantomData<A>,
-}
-
+pub struct RolA<A>(PhantomData<A>);
+pub struct Rol<A>(PhantomData<A>);
 // create own instruction for right-rotating the accumulator
-pub struct RorA<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Ror<A> {
-	phantom: PhantomData<A>,
-}
-
+pub struct RorA<A>(PhantomData<A>);
+pub struct Ror<A>(PhantomData<A>);
 // AND
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for And<A> {

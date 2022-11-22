@@ -3,81 +3,25 @@ use crate::cpu::Cpu;
 use crate::mem::CpuBus;
 use std::marker::PhantomData;
 
-pub struct Alr<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Anc<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Ane<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Arr<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Dcp<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Isc<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Las<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Lax<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Lxa<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Rla<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Rra<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Sax<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Sbx<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Sha<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Shx<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Shy<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Slo<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Sre<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Tas<A> {
-	phantom: PhantomData<A>,
-}
+pub struct Alr<A>(PhantomData<A>);
+pub struct Anc<A>(PhantomData<A>);
+pub struct Ane<A>(PhantomData<A>);
+pub struct Arr<A>(PhantomData<A>);
+pub struct Dcp<A>(PhantomData<A>);
+pub struct Isc<A>(PhantomData<A>);
+pub struct Las<A>(PhantomData<A>);
+pub struct Lax<A>(PhantomData<A>);
+pub struct Lxa<A>(PhantomData<A>);
+pub struct Rla<A>(PhantomData<A>);
+pub struct Rra<A>(PhantomData<A>);
+pub struct Sax<A>(PhantomData<A>);
+pub struct Sbx<A>(PhantomData<A>);
+pub struct Sha<A>(PhantomData<A>);
+pub struct Shx<A>(PhantomData<A>);
+pub struct Shy<A>(PhantomData<A>);
+pub struct Slo<A>(PhantomData<A>);
+pub struct Sre<A>(PhantomData<A>);
+pub struct Tas<A>(PhantomData<A>);
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Alr<A> {
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {

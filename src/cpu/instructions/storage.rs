@@ -5,9 +5,7 @@ use std::marker::PhantomData;
 
 macro_rules! load_instruction {
 	($instr:ident, $register:ident, $name:expr) => {
-		pub struct $instr<A> {
-			phantom: PhantomData<A>,
-		}
+		pub struct $instr<A>(PhantomData<A>);
 
 		impl<B: CpuBus, A: AddressMode<B>> Operation<B> for $instr<A> {
 			fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {
@@ -43,9 +41,7 @@ macro_rules! load_instruction {
 
 macro_rules! store_instruction {
 	($instr:ident, $register:ident, $name:expr) => {
-		pub struct $instr<A> {
-			phantom: PhantomData<A>,
-		}
+		pub struct $instr<A>(PhantomData<A>);
 
 		impl<B: CpuBus, A: AddressMode<B>> Operation<B> for $instr<A> {
 			fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {
@@ -72,9 +68,8 @@ macro_rules! store_instruction {
 
 macro_rules! transfer_instruction {
 	($instr:ident, $src_reg:ident, $dest_reg:ident, $name:expr) => {
-		pub struct $instr<A> {
-			phantom: PhantomData<A>,
-		}
+		pub struct $instr<A>(PhantomData<A>);
+
 		impl<B: CpuBus, A: AddressMode<B>> Operation<B> for $instr<A> {
 			fn exec(cpu: &mut Cpu<B>, _mem: &mut B, _addr: Option<usize>) -> Option<usize> {
 				cpu.$dest_reg = cpu.$src_reg;
@@ -94,9 +89,7 @@ macro_rules! transfer_instruction {
 	};
 }
 
-pub struct Txs<A> {
-	phantom: PhantomData<A>,
-}
+pub struct Txs<A>(PhantomData<A>);
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Txs<A> {
 	fn exec(cpu: &mut Cpu<B>, _mem: &mut B, _addr: Option<usize>) -> Option<usize> {

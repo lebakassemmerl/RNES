@@ -3,13 +3,8 @@ use crate::cpu::{Cpu, InterruptSource};
 use crate::mem::CpuBus;
 use std::marker::PhantomData;
 
-pub struct Nop<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Brk<A> {
-	phantom: PhantomData<A>,
-}
+pub struct Nop<A>(PhantomData<A>);
+pub struct Brk<A>(PhantomData<A>);
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Nop<A> {
 	fn exec(_cpu: &mut Cpu<B>, _mem: &mut B, _addr: Option<usize>) -> Option<usize> {

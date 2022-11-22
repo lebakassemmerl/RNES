@@ -3,21 +3,10 @@ use crate::cpu::Cpu;
 use crate::mem::CpuBus;
 use std::marker::PhantomData;
 
-pub struct Plp<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Php<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Pla<A> {
-	phantom: PhantomData<A>,
-}
-
-pub struct Pha<A> {
-	phantom: PhantomData<A>,
-}
+pub struct Plp<A>(PhantomData<A>);
+pub struct Php<A>(PhantomData<A>);
+pub struct Pla<A>(PhantomData<A>);
+pub struct Pha<A>(PhantomData<A>);
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Pla<A> {
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, _addr: Option<usize>) -> Option<usize> {
