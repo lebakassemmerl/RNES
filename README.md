@@ -8,13 +8,12 @@ working but a lot of stuff is still missing.
 - [x] CPU
 - [x] PPU but there are still a lot of improvements necessary
 - [x] Controller Input
-- [/] Mapers:
-      + [x] Mapper 0 (NROM)
-      + [x] Mapper 1 (MMC1)
-      + [x] Mapper 2 (UxROM)
-      + [x] Mapper 3 (CNROM)
-      + [/] Mapper 4 (MMC3) partially, something is still wrong with SMB3 (I **think** it is the 
-            mapper)
+- [ ] Mappers:
+  + [x] Mapper 0 (NROM)
+  + [x] Mapper 1 (MMC1)
+  + [x] Mapper 2 (UxROM)
+  + [x] Mapper 3 (CNROM)
+  + [ ] Mapper 4 (MMC3) partially, something is still wrong with SMB3 (I **think** it is the mapper)
 - [ ] APU
 
 ## Working games (not a complete list)
