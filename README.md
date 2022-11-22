@@ -42,6 +42,19 @@ extremely slow (has to be fixed):
 cargo run --release <path to rom>
 ```
 
+## Keymapping
+Currently only 1 Controller is supported and the keymapping is also fixed.
+
+### Mapping:
+- NES A -> K
+- NES B -> J
+- NES Start -> Space
+- NES Select -> Enter / Return
+- NES Up -> W
+- NES Down -> S
+- NES Left -> A
+- NES Right -> D
+
 ## TODO
 A todo-list can be found in doc/todo.md which contains a lot of stuff which as to be implemented,
 fixed or improved.
