@@ -1,0 +1,10 @@
+[package]
+name = "rustynes"
+version = "0.1.0"
+authors = ["hotschi <hotschi@gmx.at>",
+            "PTroester <patrick.troester@hotmail.com>",
+            "Philip Kronawetter <philip.kronawetter@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+sdl2 = "*"
