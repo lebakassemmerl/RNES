@@ -237,7 +237,7 @@ pub fn start(
 			}
 
 			let elapsed = now.elapsed();
-			//println!("rendering took {}us", elapsed.as_micros());
+			// println!("rendering took {}us", elapsed.as_micros());
 
 			canvas.present();
 			// std::thread::sleep(Duration::new(0, 1_000_000));

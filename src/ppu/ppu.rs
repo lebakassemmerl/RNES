@@ -54,7 +54,7 @@ impl<B: PpuBus> Ppu<B> {
 
 			fb: FrameBuffer::new(256, 240),
 			tile_fb: FrameBuffer::new(256, 128),
-			fb_ready: true,
+			fb_ready: false,
 			frame_finished: false,
 			cycle_cnt: 0,
 

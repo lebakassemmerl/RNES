@@ -9,16 +9,17 @@ mod ppu;
 mod sdl2_wrapper;
 mod util;
 
+use spin_sleep::SpinSleeper;
 use std::env;
 use std::sync::{
 	mpsc::{self, Receiver, Sender},
-	Arc, RwLock,
+	Arc,
 };
 use std::thread;
 use std::time::Instant;
 
 use io::JoyPad;
-use nes::Nes;
+use nes::{FrameStatus, Nes};
 use sdl2_wrapper::engine;
 
 type ShFb = Arc<Vec<u8>>;
@@ -35,28 +36,38 @@ fn main() {
 	}
 
 	let mut nes = nes::Nes::new(args[1].as_str()).unwrap();
+	let spin_sleeper = SpinSleeper::new(1000_000);
 
 	let thr = engine::start(rx_quit, rx_fb, rx_tb, tx_joy);
 	tx_tb.send(nes.tile_buf()).unwrap();
 
 	println!("Start");
 	nes.start();
+
+	let mut frame_start = Instant::now();
 	loop {
 		if let Ok(b) = rx_joy.try_recv() {
 			nes.button_update(b);
 		}
 
-		let frame_start = Instant::now();
-		if nes.run_frame() {
-			// the PPU finished rendering the framebuffer -> render it via SDL2
-			tx_fb.send(nes.get_fb()).unwrap_or(());
-			tx_tb.send(nes.tile_buf()).unwrap_or(());
-		} else {
-			// vertical blank of the PPU finished -> 1 frame finished -> wait until 1/60Hz elapse
-			let frame_time = Instant::now().duration_since(frame_start);
-			if frame_time < Nes::FRAME_TIME_NS {
-				thread::sleep(Nes::FRAME_TIME_NS - frame_time);
+		match nes.run_frame() {
+			FrameStatus::FrambufferReady => {
+				// the PPU finished rendering the framebuffer -> render it via SDL2
+				tx_fb.send(nes.get_fb()).unwrap_or(());
+				tx_tb.send(nes.tile_buf()).unwrap_or(());
 			}
+
+			FrameStatus::VBlank => {
+				// vertical blank of the PPU finished -> 1 frame finished -> wait until 1/60Hz elapse
+				let frame_finished = Instant::now();
+				let frame_time = frame_finished.duration_since(frame_start);
+				if frame_time < Nes::FRAME_TIME_NS {
+					spin_sleeper.sleep(Nes::FRAME_TIME_NS - frame_time);
+				}
+				frame_start = Instant::now();
+			}
+
+			FrameStatus::Going => {}
 		}
 
 		if thr.is_finished() {

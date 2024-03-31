@@ -1,5 +1,5 @@
 [package]
-name = "rustynes"
+name = "RNES"
 version = "0.1.0"
 authors = ["hotschi <hotschi@gmx.at>",
             "PTroester <patrick.troester@hotmail.com>",
@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 sdl2 = "*"
+spin_sleep = "*"
 
 [features]
 cpu_disasm = []

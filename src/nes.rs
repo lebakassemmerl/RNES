@@ -60,6 +60,12 @@ enum TVSystemSupport {
 	Both,
 }
 
+pub enum FrameStatus {
+	Going,           // PPU is somewhere in the middle of rendering a frame
+	FrambufferReady, // PPU rendered every pixel and the FB is ready to be displayed
+	VBlank,          // PPU reached its last cycle and wraps back around to the 1st pixel
+}
+
 impl fmt::Debug for RomErr {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match &self {
@@ -81,45 +87,35 @@ impl Nes {
 		self.cpu.assert_interrupt(InterruptSource::RESET);
 	}
 
-	pub fn run_frame(&mut self) -> bool {
-		loop {
-			self.ppu.step(&mut self.mem);
-			if self.ppu.cycle260(&mut self.mem) {
-				self.mem.cartridge().report_ppucycle_260();
-			}
+	pub fn run_frame(&mut self) -> FrameStatus {
+		self.ppu.step(&mut self.mem);
+		self.ppu.step(&mut self.mem);
+		self.ppu.step(&mut self.mem);
 
-			self.ppu.step(&mut self.mem);
-			if self.ppu.cycle260(&mut self.mem) {
-				self.mem.cartridge().report_ppucycle_260();
-			}
-
-			self.ppu.step(&mut self.mem);
-			if self.ppu.cycle260(&mut self.mem) {
-				self.mem.cartridge().report_ppucycle_260();
-			}
-
-			if self.mem.get_nmi() {
-				self.cpu.assert_interrupt(InterruptSource::NMI);
-			}
-			if self.mem.get_irq() {
-				self.cpu.assert_interrupt(InterruptSource::IRQ);
-			}
-
-			self.cpu.step(&mut self.mem);
-
-			if self.mem.get_dma() {
-				self.cpu.dma_transaction_occurred();
-			}
-
-			if self.ppu.fb_ready() {
-				return true;
-			}
-
-			if self.ppu.frame_finished() {
-				// self.mem.dump();
-				return false;
-			}
+		if self.mem.get_nmi() {
+			self.cpu.assert_interrupt(InterruptSource::NMI);
 		}
+
+		if self.mem.get_irq() {
+			self.cpu.assert_interrupt(InterruptSource::IRQ);
+		}
+
+		self.cpu.step(&mut self.mem);
+
+		if self.mem.get_dma() {
+			self.cpu.dma_transaction_occurred();
+		}
+
+		if self.ppu.fb_ready() {
+			return FrameStatus::FrambufferReady;
+		}
+
+		if self.ppu.frame_finished() {
+			// self.mem.dump();
+			return FrameStatus::VBlank;
+		}
+
+		FrameStatus::Going
 	}
 
 	pub fn get_fb(&self) -> Arc<Vec<u8>> {
