@@ -22,7 +22,7 @@ pub struct Nes {
 	savefile: Option<String>,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct RomInfo {
 	cartr_info: CartridgeInfo,
 	trainer: bool,
@@ -31,7 +31,7 @@ struct RomInfo {
 	ines_version: INesVersion,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct INesV2Info {
 	tv_system: bool, // false = NTSC, true = PAL
 	tv_system_support: TVSystemSupport,
@@ -47,11 +47,13 @@ pub enum RomErr {
 	Unknown,
 }
 
+#[derive(Debug)]
 enum INesVersion {
 	V1,
 	V2(INesV2Info),
 }
 
+#[derive(Debug)]
 enum TVSystemSupport {
 	Ntsc,
 	Pal,
@@ -82,13 +84,23 @@ impl Nes {
 	pub fn run_frame(&mut self) -> bool {
 		loop {
 			self.ppu.step(&mut self.mem);
+			if self.ppu.cycle260(&mut self.mem) {
+				self.mem.cartridge().report_ppucycle_260();
+			}
+
 			self.ppu.step(&mut self.mem);
+			if self.ppu.cycle260(&mut self.mem) {
+				self.mem.cartridge().report_ppucycle_260();
+			}
+
 			self.ppu.step(&mut self.mem);
+			if self.ppu.cycle260(&mut self.mem) {
+				self.mem.cartridge().report_ppucycle_260();
+			}
 
 			if self.mem.get_nmi() {
 				self.cpu.assert_interrupt(InterruptSource::NMI);
 			}
-
 			if self.mem.get_irq() {
 				self.cpu.assert_interrupt(InterruptSource::IRQ);
 			}
@@ -137,6 +149,7 @@ impl Nes {
 
 		let rom = fs::read(rom_file).or_else(|_| Err(RomErr::Unknown))?;
 		let rom_info = Nes::parse_ines(&rom)?;
+		println!("RomInfo: {:?}", rom_info);
 
 		let start_idx = if rom_info.trainer {
 			16 + 512

@@ -208,37 +208,31 @@ impl<B: CpuBus> Cpu<B> {
 		}
 		self.irq.pending = false;
 
-		match &self.irq.src {
-			InterruptSource::RESET => {
-				self.reset();
-				self.pc = Self::read16(mem, RESET_VEC as usize);
-			}
-			InterruptSource::NMI => {
-				self.push16(mem, self.pc);
-				let mut flags = self.p | (1 << UNUSED_IDX);
-				flags &= !(1 << BRK_IDX);
-				self.push8(mem, flags);
+		if self.irq.src == InterruptSource::RESET {
+			self.reset();
+			self.pc = Self::read16(mem, RESET_VEC as usize);
+		} else if self.irq.src == InterruptSource::NMI {
+			self.push16(mem, self.pc);
+			let mut flags = self.p | (1 << UNUSED_IDX);
+			flags &= !(1 << BRK_IDX);
+			self.push8(mem, flags);
 
-				self.pc = Self::read16(mem, NMI_VEC as usize);
-			}
-			InterruptSource::IRQ => {
-				self.push16(mem, self.pc);
-				let mut flags = self.p | (1 << UNUSED_IDX);
-				flags &= !(1 << BRK_IDX);
-				self.push8(mem, flags);
+			self.pc = Self::read16(mem, NMI_VEC as usize);
+		} else if self.irq.src == InterruptSource::IRQ {
+			self.push16(mem, self.pc);
+			let mut flags = self.p | (1 << UNUSED_IDX);
+			flags &= !(1 << BRK_IDX);
+			self.push8(mem, flags);
 
-				self.set_interrupt(true);
-				self.pc = Self::read16(mem, IRQ_VEC as usize);
-			}
-			InterruptSource::BRK => {
-				self.push16(mem, self.pc);
-				let flags = self.p | (1 << UNUSED_IDX) | (1 << BRK_IDX);
-				self.push8(mem, flags);
+			self.set_interrupt(true);
+			self.pc = Self::read16(mem, IRQ_VEC as usize);
+		} else if self.irq.src == InterruptSource::BRK {
+			self.push16(mem, self.pc);
+			let flags = self.p | (1 << UNUSED_IDX) | (1 << BRK_IDX);
+			self.push8(mem, flags);
 
-				self.set_interrupt(true);
-				self.pc = Self::read16(mem, BRK_VEC as usize);
-			}
-			_ => {}
+			self.set_interrupt(true);
+			self.pc = Self::read16(mem, BRK_VEC as usize);
 		}
 
 		self.irq.src = InterruptSource::NONE;
@@ -256,6 +250,9 @@ impl<B: CpuBus> Cpu<B> {
 
 	// cpu execution
 	fn exec_instruction(&mut self, mem: &mut B) -> usize {
+		#[cfg(feature = "cpu_mem")]
+		print!("{}\nInstr: ", self.log_cpu_stats(mem));
+
 		let instr = CpuBus::read(mem, self.pc as usize);
 		self.pc += 1;
 

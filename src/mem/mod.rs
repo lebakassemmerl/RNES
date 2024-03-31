@@ -19,7 +19,8 @@ pub trait Segment {
 pub trait PpuSegment {
 	fn read(&mut self, addr: usize) -> u8;
 	fn write(&mut self, addr: usize, val: u8);
-	fn irq(&mut self) -> bool;
+	fn report_ppucycle_260(&mut self);
+	fn get_irq(&mut self) -> bool;
 }
 
 pub trait BankedSegment {
@@ -226,13 +227,16 @@ impl MemoryMap {
 		// self.dump_palette();
 
 		// println!("\nOAM memory\n");
-		self.dump_oam();
+		// self.dump_oam();
 	}
 }
 
 impl CpuBus for MemoryMap {
 	fn read(&mut self, addr: usize) -> u8 {
-		match addr {
+		#[cfg(feature = "cpu_mem")]
+		print!("CPURD {:04x} ", addr);
+
+		let val = match addr {
 			0x0..=0x1FFF => self.cpu_ram.read(addr),
 			0x2000..=0x3FFF => {
 				let reg = addr & 0x07;
@@ -247,8 +251,8 @@ impl CpuBus for MemoryMap {
 					}
 					_ => {
 						panic!(
-							"CpuBus read(): trying to read from a writeonly PPU register: {}",
-							reg
+							"CpuBus read(): trying to read from a WO PPU register: {}, addr: {:04x}",
+							reg, addr
 						)
 					}
 				}
@@ -261,10 +265,15 @@ impl CpuBus for MemoryMap {
 			0x4017 => self.ioctrl.read_controller2(),
 			0x4020..=0xFFFF => Segment::read(self.cartridge.as_ref(), addr),
 			_ => panic!("CpuBus::read(): address out of memory range: 0x{:x}", addr),
-		}
+		};
+
+		val
 	}
 
 	fn write(&mut self, addr: usize, val: u8) {
+		#[cfg(feature = "cpu_mem")]
+		println!("CPUWR {:04x}, val: {:02x}", addr, val);
+
 		match addr {
 			0x0..=0x1FFF => self.cpu_ram.write(addr, val),
 			0x2000..=0x3FFF => {
@@ -314,6 +323,9 @@ impl CpuBus for MemoryMap {
 
 impl PpuBus for MemoryMap {
 	fn read(&mut self, addr: usize) -> u8 {
+		#[cfg(feature = "ppu_mem")]
+		println!("PPURD {:04x}", addr);
+
 		let ret = match addr {
 			0x0000..=0x1FFF
 			| 0x2000..=0x23FF
@@ -334,7 +346,7 @@ impl PpuBus for MemoryMap {
 			_ => panic!("PpuBus::read(): address out of memory range: 0x{:x}", addr),
 		};
 
-		if self.cartridge.irq() {
+		if self.cartridge.get_irq() {
 			self.irq_asserted = true;
 		}
 
@@ -342,6 +354,9 @@ impl PpuBus for MemoryMap {
 	}
 
 	fn write(&mut self, addr: usize, val: u8) {
+		#[cfg(feature = "ppu_mem")]
+		println!("PPUWR {:04x}, val: {:02x}", addr, val);
+
 		match addr {
 			0x0000..=0x1FFF
 			| 0x2000..=0x23FF
@@ -362,7 +377,7 @@ impl PpuBus for MemoryMap {
 			_ => panic!("PpuBus::write(): address out of memory range: 0x{:x}", addr),
 		}
 
-		if self.cartridge.irq() {
+		if self.cartridge.get_irq() {
 			self.irq_asserted = true;
 		}
 	}

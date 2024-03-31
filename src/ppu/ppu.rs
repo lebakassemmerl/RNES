@@ -293,7 +293,7 @@ impl<B: PpuBus> Ppu<B> {
 					// we found a sprite which we maybe have to render
 
 					if spr.sprite0 && mask.render_background() {
-						// check for sprit0 hit, background rendering must be enabled
+						// check for sprite0 hit, background rendering must be enabled
 						if spr.pix > 0 && pix > 0 && !status.get_sprite0_hit() {
 							let mut left_border = 0usize;
 
@@ -372,6 +372,15 @@ impl<B: PpuBus> Ppu<B> {
 
 	pub fn get_fb(&self) -> Arc<Vec<u8>> {
 		self.fb.fb()
+	}
+
+	pub fn cycle260(&self, mem: &mut B) -> bool {
+		let mask = mem.ppu_reg().ppu_mask;
+		if (self.cycle == 261) && mask.render_background() && mask.render_sprites() {
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	pub fn tile_buf(&mut self, mem: &mut B) -> Arc<Vec<u8>> {

@@ -57,7 +57,7 @@ pub trait LoadRom {
 	fn load(data: &[u8], info: &CartridgeInfo) -> Box<dyn Cartridge>;
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct CartridgeInfo {
 	pub mapper_id: u8,
 	pub prg_rom_cnt: usize,

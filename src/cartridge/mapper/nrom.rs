@@ -15,8 +15,8 @@ impl Segment for NRom {
 	fn read(&self, addr: usize) -> u8 {
 		match addr {
 			0x4020..=0x5FFF => 0x00, // no expansion ROM supported
-			0x6000..=0x7FFF => self.prg_ram.read(0, addr),
-			0x8000..=0xBFFF => self.prg_rom.read(0, addr),
+			0x6000..=0x7FFF => self.prg_ram.read(0, addr - 0x6000),
+			0x8000..=0xBFFF => self.prg_rom.read(0, addr - 0x8000),
 			0xC000..=0xFFFF => {
 				if self.prg_rom.bank_cnt() == 2 {
 					self.prg_rom.read(1, addr)
@@ -36,7 +36,7 @@ impl Segment for NRom {
 	fn write(&mut self, addr: usize, val: u8) {
 		match addr {
 			0x4020..=0x5FFF => {} // no expansion ROM supported
-			0x6000..=0x7FFF => self.prg_ram.write(0, addr, val),
+			0x6000..=0x7FFF => self.prg_ram.write(0, addr - 0x6000, val),
 			0x8000..=0xFFFF => {} // has no RAM to write to
 			_ => panic!("NRom segment write(): address out of memory range: 0x{:x}", addr),
 		}
@@ -70,7 +70,9 @@ impl PpuSegment for NRom {
 		}
 	}
 
-	fn irq(&mut self) -> bool {
+	fn report_ppucycle_260(&mut self) {}
+
+	fn get_irq(&mut self) -> bool {
 		false
 	}
 }

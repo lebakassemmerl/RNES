@@ -54,8 +54,8 @@ branch_instruction_clear!(Bvc, is_overflow, "BVC");
 fn branch<B: CpuBus>(cpu: &mut Cpu<B>, op: i8, flag: bool) -> usize {
 	if flag {
 		let pc_old = cpu.pc;
-		let pc_new = (cpu.pc as i16) + (op as i16);
-		cpu.pc = pc_new as u16;
+		// let pc_new = (cpu.pc as i16) + (op as i16);
+		cpu.pc = cpu.pc.wrapping_add_signed(op as i16);
 
 		if (pc_old >> 8) == (cpu.pc >> 8) {
 			// no page-boundary crossed

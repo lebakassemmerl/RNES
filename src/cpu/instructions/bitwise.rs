@@ -115,7 +115,7 @@ impl<B: CpuBus> AddressOperation<B, Accumulator> for AslA<Accumulator> {
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Asl<A> {
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {
-		let a = addr.expect("ASL pre_exec() requires an address");
+		let a = addr.expect("ASL requires an address");
 
 		let mut op = CpuBus::read(mem, a);
 		cpu.set_carry(op & 0x80 > 0);
@@ -157,7 +157,7 @@ impl<B: CpuBus> AddressOperation<B, AbsoluteX> for Asl<AbsoluteX> {
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Bit<A> {
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {
-		let op = CpuBus::read(mem, addr.expect("BIT pre_exec() requires an address"));
+		let op = CpuBus::read(mem, addr.expect("BIT requires an address"));
 		cpu.set_statusbit(op & (1 << 7) > 0, 7); // copy negative bit into statusregister
 		cpu.set_statusbit(op & (1 << 6) > 0, 6); // copy overflow bit into statusregister
 		cpu.set_zero(op & cpu.a);
@@ -182,7 +182,7 @@ impl<B: CpuBus> AddressOperation<B, Absolute> for Bit<Absolute> {
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Eor<A> {
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {
-		let op = CpuBus::read(mem, addr.expect("EOR pre_exec() requires an address"));
+		let op = CpuBus::read(mem, addr.expect("EOR requires an address"));
 		cpu.a ^= op;
 		cpu.set_negative(cpu.a);
 		cpu.set_zero(cpu.a);
@@ -274,7 +274,7 @@ impl<B: CpuBus> AddressOperation<B, Accumulator> for LsrA<Accumulator> {
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Lsr<A> {
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {
-		let a = addr.expect("LSR pre_exec() requires an address");
+		let a = addr.expect("LSR requires an address");
 
 		let mut op = CpuBus::read(mem, a);
 		cpu.set_carry(op & 0x01 > 0);
@@ -410,7 +410,7 @@ impl<B: CpuBus> AddressOperation<B, Accumulator> for RolA<Accumulator> {
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Rol<A> {
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {
-		let a = addr.expect("ROL pre_exec() requires an address");
+		let a = addr.expect("ROL requires an address");
 
 		let mut op = CpuBus::read(mem, a);
 		let carry = cpu.is_carry() as u8;
@@ -475,7 +475,7 @@ impl<B: CpuBus> AddressOperation<B, Accumulator> for RorA<Accumulator> {
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Ror<A> {
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {
-		let a = addr.expect("ROR pre_exec() requires an address");
+		let a = addr.expect("ROR requires an address");
 
 		let mut op = CpuBus::read(mem, a);
 		let carry = cpu.is_carry() as u8;

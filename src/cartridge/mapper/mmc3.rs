@@ -9,7 +9,7 @@ const MMC3_CHR_ROM_BANK_SIZE: usize = 1024;
 pub(crate) struct Mmc3 {
 	prg_rom: BankedMemory,
 	chr_rom: BankedMemory,
-	prg_ram: Option<BankedMemory>,
+	prg_ram: BankedMemory,
 	ci_ram: BankedMemory,
 
 	prg_sel: [usize; 3],
@@ -26,9 +26,8 @@ pub(crate) struct Mmc3 {
 	irq_load: u8,
 	irq_reload: bool,
 	irq_enable: bool,
-	prev_a12: bool,
-	irq_thrown: bool,
 	irq_asserted: bool,
+	last_a12: bool,
 }
 
 impl Mmc3 {
@@ -36,15 +35,16 @@ impl Mmc3 {
 		const A12_MASK: usize = mask!(usize, 1, 12, false);
 		const ADDR_MAX: usize = 0x2000;
 
-		let a12 = addr < ADDR_MAX && (addr & A12_MASK) > 0;
-		let rising_edge = self.prev_a12 == false && a12 == true;
-		self.prev_a12 = a12;
+		let a12 = (addr < ADDR_MAX) && ((addr & A12_MASK) > 0);
+		let rising_edge = (self.last_a12 == false) && (a12 == true);
+		self.last_a12 = a12;
 
 		// we have to clock the counter on the rising edge
 		if !rising_edge {
 			return;
 		}
 
+		println!("rising edge");
 		if (self.irq_counter == 0) || self.irq_reload {
 			self.irq_reload = false;
 			self.irq_counter = self.irq_load;
@@ -52,12 +52,11 @@ impl Mmc3 {
 			self.irq_counter -= 1;
 		}
 
-		if self.irq_enable && self.irq_counter == 0 {
-			if self.irq_load > 0 || (self.irq_load == 0 && !self.irq_thrown) {
-				self.irq_thrown = true;
-				self.irq_asserted = true;
-			}
+		if self.irq_enable && (self.irq_counter == 0) && (self.irq_load > 0) {
+			self.irq_asserted = true;
 		}
+
+		self.last_a12 = a12;
 	}
 
 	fn update_banks(&mut self) {
@@ -92,12 +91,10 @@ impl Segment for Mmc3 {
 	fn read(&self, addr: usize) -> u8 {
 		match addr {
 			0x6000..=0x7FFF => {
-				if self.prg_ram.is_none() {
-					0
-				} else if !self.prg_ram_enable {
+				if !self.prg_ram_enable {
 					0
 				} else {
-					self.prg_ram.as_ref().unwrap().read(0, addr)
+					self.prg_ram.read(0, addr)
 				}
 			}
 			0x8000..=0x9FFF => self.prg_rom.read(self.prg_sel[0], addr),
@@ -110,10 +107,8 @@ impl Segment for Mmc3 {
 	fn write(&mut self, addr: usize, val: u8) {
 		match addr {
 			0x6000..=0x7FFF => {
-				if let Some(ram) = self.prg_ram.as_mut() {
-					if !self.prg_ram_wp && self.prg_ram_enable {
-						ram.write(0, addr, val);
-					}
+				if !self.prg_ram_wp && self.prg_ram_enable {
+					self.prg_ram.write(0, addr, val);
 				}
 			}
 			0x8000..=0x9FFF => {
@@ -150,7 +145,7 @@ impl Segment for Mmc3 {
 				if (addr & 0x01) > 0 {
 					// odd, reload IRQ counter
 					self.irq_reload = true;
-					self.irq_thrown = false;
+					self.irq_counter = 0;
 				} else {
 					// even, update IRQ latch
 					self.irq_load = val;
@@ -164,7 +159,6 @@ impl Segment for Mmc3 {
 					// even, IRQ disable register
 					self.irq_enable = false;
 					self.irq_asserted = false;
-					self.irq_counter = self.irq_load;
 				}
 			}
 			_ => panic!("MMC3 segment write(): address out of memory range: 0x{:x}", addr),
@@ -174,37 +168,42 @@ impl Segment for Mmc3 {
 
 impl PpuSegment for Mmc3 {
 	fn read(&mut self, addr: usize) -> u8 {
+		let chr_addr = addr % MMC3_CHR_ROM_BANK_SIZE;
+		let ci_addr = addr % CI_RAM_BANK_SIZE;
 		self.clock_irq_counter(addr);
 
 		match addr {
-			0x0000..=0x03FF => self.chr_rom.read(self.chr_sel[0], addr),
-			0x0400..=0x07FF => self.chr_rom.read(self.chr_sel[1], addr),
-			0x0800..=0x0BFF => self.chr_rom.read(self.chr_sel[2], addr),
-			0x0C00..=0x0FFF => self.chr_rom.read(self.chr_sel[3], addr),
-			0x1000..=0x13FF => self.chr_rom.read(self.chr_sel[4], addr),
-			0x1400..=0x17FF => self.chr_rom.read(self.chr_sel[5], addr),
-			0x1800..=0x1BFF => self.chr_rom.read(self.chr_sel[6], addr),
-			0x1C00..=0x1FFF => self.chr_rom.read(self.chr_sel[7], addr),
+			0x0000..=0x03FF => self.chr_rom.read(self.chr_sel[0], chr_addr),
+			0x0400..=0x07FF => self.chr_rom.read(self.chr_sel[1], chr_addr),
+			0x0800..=0x0BFF => self.chr_rom.read(self.chr_sel[2], chr_addr),
+			0x0C00..=0x0FFF => self.chr_rom.read(self.chr_sel[3], chr_addr),
+			0x1000..=0x13FF => self.chr_rom.read(self.chr_sel[4], chr_addr),
+			0x1400..=0x17FF => self.chr_rom.read(self.chr_sel[5], chr_addr),
+			0x1800..=0x1BFF => self.chr_rom.read(self.chr_sel[6], chr_addr),
+			0x1C00..=0x1FFF => self.chr_rom.read(self.chr_sel[7], chr_addr),
 
-			0x2000..=0x23FF | 0x3000..=0x33FF => self.ci_ram.read(self.ci_sel[0], addr),
-			0x2400..=0x27FF | 0x3400..=0x37FF => self.ci_ram.read(self.ci_sel[1], addr),
-			0x2800..=0x2BFF | 0x3800..=0x3BFF => self.ci_ram.read(self.ci_sel[2], addr),
-			0x2C00..=0x2FFF | 0x3C00..=0x3EFF => self.ci_ram.read(self.ci_sel[3], addr),
+			0x2000..=0x23FF | 0x3000..=0x33FF => self.ci_ram.read(self.ci_sel[0], ci_addr),
+			0x2400..=0x27FF | 0x3400..=0x37FF => self.ci_ram.read(self.ci_sel[1], ci_addr),
+			0x2800..=0x2BFF | 0x3800..=0x3BFF => self.ci_ram.read(self.ci_sel[2], ci_addr),
+			0x2C00..=0x2FFF | 0x3C00..=0x3EFF => self.ci_ram.read(self.ci_sel[3], ci_addr),
 			_ => panic!("MMC3 PPU segment read(): address out of memory range: 0x{:x}", addr),
 		}
 	}
 
 	fn write(&mut self, addr: usize, val: u8) {
+		let ci_addr = addr % CI_RAM_BANK_SIZE;
 		match addr {
-			0x2000..=0x23FF | 0x3000..=0x33FF => self.ci_ram.write(self.ci_sel[0], addr, val),
-			0x2400..=0x27FF | 0x3400..=0x37FF => self.ci_ram.write(self.ci_sel[1], addr, val),
-			0x2800..=0x2BFF | 0x3800..=0x3BFF => self.ci_ram.write(self.ci_sel[2], addr, val),
-			0x2C00..=0x2FFF | 0x3C00..=0x3EFF => self.ci_ram.write(self.ci_sel[3], addr, val),
+			0x2000..=0x23FF | 0x3000..=0x33FF => self.ci_ram.write(self.ci_sel[0], ci_addr, val),
+			0x2400..=0x27FF | 0x3400..=0x37FF => self.ci_ram.write(self.ci_sel[1], ci_addr, val),
+			0x2800..=0x2BFF | 0x3800..=0x3BFF => self.ci_ram.write(self.ci_sel[2], ci_addr, val),
+			0x2C00..=0x2FFF | 0x3C00..=0x3EFF => self.ci_ram.write(self.ci_sel[3], ci_addr, val),
 			_ => panic!("MMC3 PPU segment write(): address out of memory range: 0x{:x}", addr),
 		}
 	}
 
-	fn irq(&mut self) -> bool {
+	fn report_ppucycle_260(&mut self) {}
+
+	fn get_irq(&mut self) -> bool {
 		let ret = self.irq_asserted;
 		self.irq_asserted = false;
 
@@ -226,11 +225,7 @@ impl LoadRom for Mmc3 {
 		let chr_rom =
 			BankedMemory::load(&data[prg_rom_bytes..], MMC3_CHR_ROM_BANK_SIZE, chr_rom_cnt);
 
-		let prg_ram = if info.prg_ram_cnt == 0 {
-			None
-		} else {
-			Some(BankedMemory::empty(PRG_RAM_BANK_SIZE, 1))
-		};
+		let prg_ram = BankedMemory::empty(PRG_RAM_BANK_SIZE, 1);
 
 		let (ci_ram, ci_sel, ci_4screen) = match info.ppu_mirror {
 			PpuMirror::Horizontal => {
@@ -265,23 +260,22 @@ impl LoadRom for Mmc3 {
 			irq_load: 0,
 			irq_reload: false,
 			irq_enable: false,
-			prev_a12: false,
-			irq_thrown: false,
 			irq_asserted: false,
+			last_a12: false,
 		})
 	}
 }
 
 impl Cartridge for Mmc3 {
 	fn support_savestates(&self) -> bool {
-		self.prg_ram.is_some()
+		true
 	}
 
 	fn get_battery_ram<'a>(&'a self) -> &'a [u8] {
-		self.prg_ram.as_ref().unwrap().data().as_slice()
+		self.prg_ram.data().as_slice()
 	}
 
 	fn set_battery_ram(&mut self, ram: &[u8]) {
-		self.prg_ram.as_mut().unwrap().reload(ram);
+		self.prg_ram.reload(ram);
 	}
 }
