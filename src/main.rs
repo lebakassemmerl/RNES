@@ -21,7 +21,7 @@ use io::JoyPad;
 use nes::Nes;
 use sdl2_wrapper::engine;
 
-type ShFb = Arc<RwLock<Vec<u8>>>;
+type ShFb = Arc<Vec<u8>>;
 
 fn main() {
 	let (tx_quit, rx_quit): (Sender<bool>, Receiver<bool>) = mpsc::channel();

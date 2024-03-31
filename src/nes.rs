@@ -110,11 +110,11 @@ impl Nes {
 		}
 	}
 
-	pub fn get_fb(&self) -> Arc<RwLock<Vec<u8>>> {
+	pub fn get_fb(&self) -> Arc<Vec<u8>> {
 		self.ppu.get_fb()
 	}
 
-	pub fn tile_buf(&mut self) -> Arc<RwLock<Vec<u8>>> {
+	pub fn tile_buf(&mut self) -> Arc<Vec<u8>> {
 		self.ppu.tile_buf(&mut self.mem)
 	}
 

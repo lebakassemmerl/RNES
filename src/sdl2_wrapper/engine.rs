@@ -156,8 +156,8 @@ fn update_texture(
 
 pub fn start(
 	rx_quit: Receiver<bool>,
-	rx_fb: Receiver<Arc<RwLock<Vec<u8>>>>,
-	rx_tb: Receiver<Arc<RwLock<Vec<u8>>>>,
+	rx_fb: Receiver<Arc<Vec<u8>>>,
+	rx_tb: Receiver<Arc<Vec<u8>>>,
 	tx_joystick: Sender<[JoyPad; 2]>,
 ) -> JoinHandle<()> {
 	thread::spawn(move || {
@@ -216,8 +216,7 @@ pub fn start(
 			if let Ok(fb) = rx_fb.try_recv() {
 				texture_nes
 					.with_lock(None, |buf: &mut [u8], _pitch: usize| {
-						let fb_vec = &*fb.read().unwrap();
-						buf.copy_from_slice(fb_vec.as_slice());
+						buf.copy_from_slice(fb.as_slice());
 					})
 					.unwrap();
 				canvas
@@ -229,8 +228,7 @@ pub fn start(
 			if let Ok(tb) = rx_tb.try_recv() {
 				texture_tiles
 					.with_lock(None, |buf: &mut [u8], _pitch: usize| {
-						let tb_vec = &*tb.read().unwrap();
-						buf.copy_from_slice(tb_vec.as_slice());
+						buf.copy_from_slice(tb.as_slice());
 					})
 					.unwrap();
 				canvas

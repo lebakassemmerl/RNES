@@ -370,11 +370,11 @@ impl<B: PpuBus> Ppu<B> {
 		ret
 	}
 
-	pub fn get_fb(&self) -> Arc<RwLock<Vec<u8>>> {
+	pub fn get_fb(&self) -> Arc<Vec<u8>> {
 		self.fb.fb()
 	}
 
-	pub fn tile_buf(&mut self, mem: &mut B) -> Arc<RwLock<Vec<u8>>> {
+	pub fn tile_buf(&mut self, mem: &mut B) -> Arc<Vec<u8>> {
 		const COLOR_LOOKUP: [usize; 4] = [0x20, 0x16, 0x2A, 0x11];
 
 		let mut tile_raw: [u8; 16] = [0u8; 16];
