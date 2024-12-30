@@ -7,7 +7,7 @@ use crate::ppu::ppu::Ppu;
 use std::fmt;
 use std::fs;
 use std::path::Path;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::Duration;
 
 pub const SAVE_FILE_ENDING: &str = ".rsav";

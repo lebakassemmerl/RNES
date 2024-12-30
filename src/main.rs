@@ -15,7 +15,6 @@ use std::sync::{
 	mpsc::{self, Receiver, Sender},
 	Arc,
 };
-use std::thread;
 use std::time::Instant;
 
 use io::JoyPad;

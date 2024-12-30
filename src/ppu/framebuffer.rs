@@ -1,6 +1,8 @@
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use crate::ppu::color::Color;
+
+// TODO: get rid of unsafe but do not use locks to keep the performance
 
 pub struct FrameBuffer {
 	width: usize,

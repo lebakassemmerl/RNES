@@ -1,11 +1,14 @@
+extern crate chrono;
 extern crate sdl2;
+extern crate timer;
 
 use std::sync::{
+	atomic,
 	mpsc::{Receiver, Sender},
-	Arc, RwLock,
+	Arc,
 };
 use std::thread::{self, JoinHandle};
-use std::time::{self, Duration};
+use std::time::Duration;
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -14,7 +17,6 @@ use sdl2::rect::Rect;
 use sdl2::EventPump;
 
 use crate::io::JoyPad;
-use crate::nes::Nes;
 
 const SCREEN_SCALE: u32 = 3;
 const SCREEN_WIDTH: u32 = 256;
@@ -40,6 +42,8 @@ const TILES: &ConstRect = &ConstRect::new(
 	TILES_WIDTH_SCALED,
 	TILES_HEIGHT_SCALED,
 );
+
+static time_to_render: atomic::AtomicBool = atomic::AtomicBool::new(false);
 
 struct ConstRect {
 	off_x: i32,
@@ -175,7 +179,8 @@ pub fn start(
 			.unwrap();
 
 		let mut event_pump = ctx.event_pump().unwrap();
-		let mut canvas = window.into_canvas().build().map_err(|e| e.to_string()).unwrap();
+		let mut canvas: sdl2::render::Canvas<sdl2::video::Window> =
+			window.into_canvas().build().map_err(|e| e.to_string()).unwrap();
 		let texture_creator = canvas.texture_creator();
 
 		let mut texture_nes = texture_creator
@@ -187,12 +192,18 @@ pub fn start(
 			.map_err(|e| e.to_string())
 			.unwrap();
 
+		let timer = timer::Timer::new();
+		let timer_guard = timer.schedule_repeating(chrono::Duration::microseconds(16667), || {
+			time_to_render.store(true, atomic::Ordering::Release);
+		});
+		let mut update_screen = false;
+
 		canvas.set_draw_color(Color::RGB(220, 220, 255));
 		canvas.clear();
 		canvas.present();
 
-		let mut time_last_frame = time::Instant::now();
 		'running: loop {
+			std::thread::sleep(Duration::from_millis(1));
 			if let Ok(quit) = rx_quit.try_recv() {
 				if quit {
 					break 'running;
@@ -203,14 +214,14 @@ pub fn start(
 				break 'running;
 			}
 
-			let now = time::Instant::now();
-			if now.duration_since(time_last_frame) < Nes::FRAME_TIME_NS {
-				std::thread::sleep(Duration::from_micros(100));
+			// check if we have to render another frame
+			if time_to_render.load(atomic::Ordering::Acquire) == false {
 				continue;
 			}
-			time_last_frame = now;
+			time_to_render.store(false, atomic::Ordering::Release);
 
-			let now = time::Instant::now();
+			canvas.set_draw_color(Color::RGB(220, 220, 255));
+			canvas.clear();
 
 			// if we got a new framebuffer, we update the texture
 			if let Ok(fb) = rx_fb.try_recv() {
@@ -222,6 +233,8 @@ pub fn start(
 				canvas
 					.copy_ex(&texture_nes, None, Rect::from(SCREEN), 0., None, false, false)
 					.unwrap();
+
+				update_screen = true;
 			}
 
 			// if we got a new tilebuffer, we update the texture
@@ -234,13 +247,16 @@ pub fn start(
 				canvas
 					.copy_ex(&texture_tiles, None, Rect::from(TILES), 0., None, false, false)
 					.unwrap();
+
+				update_screen = true;
 			}
 
-			let elapsed = now.elapsed();
-			// println!("rendering took {}us", elapsed.as_micros());
-
-			canvas.present();
-			// std::thread::sleep(Duration::new(0, 1_000_000));
+			if update_screen {
+				canvas.present();
+				update_screen = false;
+			}
 		}
+
+		drop(timer_guard);
 	})
 }

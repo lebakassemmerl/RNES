@@ -7,8 +7,10 @@ authors = ["hotschi <hotschi@gmx.at>",
 edition = "2018"
 
 [dependencies]
+chrono = "*"
 sdl2 = "*"
 spin_sleep = "*"
+timer = "*"
 
 [features]
 cpu_disasm = []
