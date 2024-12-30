@@ -35,12 +35,7 @@ impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Pha<A> {
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Php<A> {
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, _addr: Option<usize>) -> Option<usize> {
-		cpu.push8(mem, cpu.p);
-		cpu.set_unused(true);
-
-		// According to the spec this should be done but in the logfile of the test-rom it's not
-		// done so lets also don't do it.
-		// cpu.set_break(true);
+		cpu.push_processor_status(mem, true);
 		None
 	}
 }

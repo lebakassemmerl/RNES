@@ -8,12 +8,6 @@ use crate::mem::CpuBus;
 use addressing::*;
 use instructions::*;
 
-// interrupt-vector locations
-const IRQ_VEC: u16 = 0xFFFE;
-const BRK_VEC: u16 = 0xFFFE;
-const RESET_VEC: u16 = 0xFFFC;
-const NMI_VEC: u16 = 0xFFFA;
-
 // status-register indexes
 const CARRY_IDX: u8 = 0;
 const ZERO_IDX: u8 = 1;
@@ -29,13 +23,13 @@ pub enum InterruptSource {
 	RESET,
 	NMI,
 	IRQ,
-	BRK,
 	NONE,
 }
 
 #[derive(Default)]
 pub struct Irq {
-	pending: bool,
+	nmi_pending: bool,
+	irq_pending: bool,
 	src: InterruptSource,
 }
 
@@ -69,6 +63,12 @@ impl Default for InterruptSource {
 }
 
 impl<B: CpuBus> Cpu<B> {
+	// interrupt-vector locations
+	pub const BRK_VEC: u16 = 0xFFFE;
+	const IRQ_VEC: u16 = 0xFFFE;
+	const RESET_VEC: u16 = 0xFFFC;
+	const NMI_VEC: u16 = 0xFFFA;
+
 	pub fn new() -> Self {
 		Self {
 			pc: 0,
@@ -85,8 +85,13 @@ impl<B: CpuBus> Cpu<B> {
 	}
 
 	pub fn assert_interrupt(&mut self, src: InterruptSource) {
-		self.irq.pending = true;
-		self.irq.src = src;
+		if src == InterruptSource::NMI {
+			self.irq.nmi_pending = true;
+		} else if !self.get_statusbit(INTERRUPT_IDX) {
+			// for non-NMI interrupts, the disable-interrupt flag has to be cleared
+			self.irq.irq_pending = true;
+			self.irq.src = src;
+		}
 	}
 
 	// only for testing-reasons!!!
@@ -110,7 +115,8 @@ impl<B: CpuBus> Cpu<B> {
 		self.x = 0;
 		self.y = 0;
 		self.p = (1 << UNUSED_IDX) | (1 << INTERRUPT_IDX); // set interrupt-disable bit on startup
-		self.irq.pending = false;
+		self.irq.nmi_pending = false;
+		self.irq.irq_pending = false;
 		self.irq.src = InterruptSource::NONE;
 		self.stat.interrupt_cnt = 0;
 		self.stat.cycle_cnt = 0;
@@ -131,6 +137,14 @@ impl<B: CpuBus> Cpu<B> {
 	fn push16(&mut self, mem: &mut B, val: u16) {
 		self.push8(mem, (val >> 8) as u8);
 		self.push8(mem, (val & 0xFF) as u8);
+	}
+
+	fn push_processor_status(&mut self, mem: &mut B, sw_int: bool) {
+		if sw_int {
+			self.push8(mem, self.p | (1 << UNUSED_IDX) | (1 << BRK_IDX));
+		} else {
+			self.push8(mem, self.p | (1 << UNUSED_IDX));
+		}
 	}
 
 	fn pop8(&mut self, mem: &mut B) -> u8 {
@@ -182,7 +196,7 @@ impl<B: CpuBus> Cpu<B> {
 		self.set_statusbit(state, UNUSED_IDX);
 	}
 
-	fn set_interrupt(&mut self, state: bool) {
+	fn set_interrupt_disable_bit(&mut self, state: bool) {
 		self.set_statusbit(state, INTERRUPT_IDX);
 	}
 
@@ -202,41 +216,36 @@ impl<B: CpuBus> Cpu<B> {
 		self.get_statusbit(CARRY_IDX)
 	}
 
-	fn interrupt(&mut self, mem: &mut B) -> bool {
-		if !self.irq.pending {
+	fn handle_interrupt(&mut self, mem: &mut B) -> bool {
+		if self.irq.nmi_pending {
+			self.push16(mem, self.pc);
+			self.push_processor_status(mem, false);
+
+			self.set_break(false);
+			self.set_interrupt_disable_bit(true);
+			self.pc = Self::read16(mem, Self::NMI_VEC as usize);
+
+			self.irq.nmi_pending = false;
+			return true;
+		} else if self.irq.irq_pending {
+			if self.irq.src == InterruptSource::RESET {
+				self.reset();
+				self.pc = Self::read16(mem, Cpu::<B>::RESET_VEC as usize);
+			} else if self.irq.src == InterruptSource::IRQ {
+				self.push16(mem, self.pc);
+				self.push_processor_status(mem, false);
+
+				self.set_break(false);
+				self.set_interrupt_disable_bit(true);
+				self.pc = Self::read16(mem, Cpu::<B>::IRQ_VEC as usize);
+			}
+
+			self.irq.src = InterruptSource::NONE;
+			self.irq.irq_pending = false;
+			return true;
+		} else {
 			return false;
 		}
-		self.irq.pending = false;
-
-		if self.irq.src == InterruptSource::RESET {
-			self.reset();
-			self.pc = Self::read16(mem, RESET_VEC as usize);
-		} else if self.irq.src == InterruptSource::NMI {
-			self.push16(mem, self.pc);
-			let mut flags = self.p | (1 << UNUSED_IDX);
-			flags &= !(1 << BRK_IDX);
-			self.push8(mem, flags);
-
-			self.pc = Self::read16(mem, NMI_VEC as usize);
-		} else if self.irq.src == InterruptSource::IRQ {
-			self.push16(mem, self.pc);
-			let mut flags = self.p | (1 << UNUSED_IDX);
-			flags &= !(1 << BRK_IDX);
-			self.push8(mem, flags);
-
-			self.set_interrupt(true);
-			self.pc = Self::read16(mem, IRQ_VEC as usize);
-		} else if self.irq.src == InterruptSource::BRK {
-			self.push16(mem, self.pc);
-			let flags = self.p | (1 << UNUSED_IDX) | (1 << BRK_IDX);
-			self.push8(mem, flags);
-
-			self.set_interrupt(true);
-			self.pc = Self::read16(mem, BRK_VEC as usize);
-		}
-
-		self.irq.src = InterruptSource::NONE;
-		true
 	}
 
 	pub fn dma_transaction_occurred(&mut self) {
@@ -521,9 +530,9 @@ impl<B: CpuBus> Cpu<B> {
 			return;
 		}
 
-		let cycles = if self.interrupt(mem) {
+		let cycles = if self.handle_interrupt(mem) {
 			self.stat.interrupt_cnt += 1;
-			7 // not sure if this is correct
+			6 // not sure if this is correct
 		} else {
 			self.stat.instr_cnt += 1;
 			self.exec_instruction(mem)
