@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use super::color::{Color, COLOR_PALETTE};
 use super::framebuffer::FrameBuffer;
@@ -31,6 +31,7 @@ pub struct Ppu<B: PpuBus> {
 	frame_finished: bool,
 	fb_ready: bool,
 	cycle_cnt: usize, // for statistics
+
 	_phantom: PhantomData<B>,
 }
 
@@ -194,6 +195,11 @@ impl<B: PpuBus> Ppu<B> {
 				}
 			}
 
+			if self.cycle == 260 && mask.render_background() && mask.render_sprites() {
+				// throw the scanline interrupt here for MMC3
+				mem.assert_scanline_irq();
+			}
+
 			if mask.render_sprites() && self.cycle > 0 && self.cycle <= 257 {
 				self.oam_buf.shift();
 			}
@@ -258,7 +264,7 @@ impl<B: PpuBus> Ppu<B> {
 			status.set_vblank();
 
 			if ctrl.nmi_enabled() {
-				mem.assert_nmi();
+				mem.assert_vblank_irq();
 			}
 
 			self.fb_ready = true;

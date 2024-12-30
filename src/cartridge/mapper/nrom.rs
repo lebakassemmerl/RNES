@@ -70,7 +70,7 @@ impl PpuSegment for NRom {
 		}
 	}
 
-	fn report_ppucycle_260(&mut self) {}
+	fn scanline_irq(&mut self) {}
 
 	fn get_irq(&mut self) -> bool {
 		false
@@ -141,7 +141,7 @@ fn assert_input(data: &[u8], info: &CartridgeInfo) {
 		data.len()
 	);
 
-	assert_eq!(info.chr_rom_cnt, 1, "NROM supports only 1 CHR_ROM bank");
+	assert!(info.chr_rom_cnt <= 1, "NROM supports maximu 1 CHR_ROM bank");
 
 	match info.ppu_mirror {
 		PpuMirror::Horizontal | PpuMirror::Vertical => (),

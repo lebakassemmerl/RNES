@@ -56,7 +56,7 @@ impl PpuSegment for UxRom {
 		}
 	}
 
-	fn report_ppucycle_260(&mut self) {}
+	fn scanline_irq(&mut self) {}
 
 	fn get_irq(&mut self) -> bool {
 		false

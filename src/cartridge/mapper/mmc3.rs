@@ -26,37 +26,20 @@ pub(crate) struct Mmc3 {
 	irq_load: u8,
 	irq_reload: bool,
 	irq_enable: bool,
-	irq_asserted: bool,
-	last_a12: bool,
+	irq_pending: bool,
 }
 
 impl Mmc3 {
-	fn clock_irq_counter(&mut self, addr: usize) {
-		const A12_MASK: usize = mask!(usize, 1, 12, false);
-		const ADDR_MAX: usize = 0x2000;
-
-		let a12 = (addr < ADDR_MAX) && ((addr & A12_MASK) > 0);
-		let rising_edge = (self.last_a12 == false) && (a12 == true);
-		self.last_a12 = a12;
-
-		// we have to clock the counter on the rising edge
-		if !rising_edge {
-			return;
-		}
-
-		println!("rising edge");
-		if (self.irq_counter == 0) || self.irq_reload {
-			self.irq_reload = false;
+	fn clock_irq_counter(&mut self) {
+		if self.irq_counter == 0 || self.irq_reload {
 			self.irq_counter = self.irq_load;
+			self.irq_reload = false;
 		} else {
 			self.irq_counter -= 1;
+			if self.irq_counter == 0 && self.irq_enable {
+				self.irq_pending = true;
+			}
 		}
-
-		if self.irq_enable && (self.irq_counter == 0) && (self.irq_load > 0) {
-			self.irq_asserted = true;
-		}
-
-		self.last_a12 = a12;
 	}
 
 	fn update_banks(&mut self) {
@@ -158,7 +141,7 @@ impl Segment for Mmc3 {
 				} else {
 					// even, IRQ disable register
 					self.irq_enable = false;
-					self.irq_asserted = false;
+					self.irq_pending = false;
 				}
 			}
 			_ => panic!("MMC3 segment write(): address out of memory range: 0x{:x}", addr),
@@ -170,7 +153,6 @@ impl PpuSegment for Mmc3 {
 	fn read(&mut self, addr: usize) -> u8 {
 		let chr_addr = addr % MMC3_CHR_ROM_BANK_SIZE;
 		let ci_addr = addr % CI_RAM_BANK_SIZE;
-		self.clock_irq_counter(addr);
 
 		match addr {
 			0x0000..=0x03FF => self.chr_rom.read(self.chr_sel[0], chr_addr),
@@ -201,11 +183,13 @@ impl PpuSegment for Mmc3 {
 		}
 	}
 
-	fn report_ppucycle_260(&mut self) {}
+	fn scanline_irq(&mut self) {
+		self.clock_irq_counter();
+	}
 
 	fn get_irq(&mut self) -> bool {
-		let ret = self.irq_asserted;
-		self.irq_asserted = false;
+		let ret = self.irq_pending;
+		self.irq_pending = false;
 
 		ret
 	}
@@ -260,8 +244,7 @@ impl LoadRom for Mmc3 {
 			irq_load: 0,
 			irq_reload: false,
 			irq_enable: false,
-			irq_asserted: false,
-			last_a12: false,
+			irq_pending: false,
 		})
 	}
 }

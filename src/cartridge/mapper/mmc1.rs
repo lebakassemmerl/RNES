@@ -219,7 +219,7 @@ impl PpuSegment for Mmc1 {
 		}
 	}
 
-	fn report_ppucycle_260(&mut self) {}
+	fn scanline_irq(&mut self) {}
 
 	fn get_irq(&mut self) -> bool {
 		false
