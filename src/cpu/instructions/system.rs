@@ -55,8 +55,16 @@ impl<B: CpuBus> AddressOperation<B, AbsoluteX> for Nop<AbsoluteX> {
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Brk<A> {
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, _addr: Option<usize>) -> Option<usize> {
-		cpu.assert_interrupt(InterruptSource::BRK);
-		cpu.interrupt(mem);
+		// Note that BRK is weird in that the instruction is 1 byte, but the return address we store
+		// is 2 bytes after the instruction, so the byte after BRK will be skipped upon return
+		// (RTI). Usually an NOP is inserted after a BRK for this reason.
+		cpu.push16(mem, cpu.pc + 1);
+		cpu.push_processor_status(mem, true);
+		cpu.set_interrupt_disable_bit(true);
+
+		cpu.set_interrupt_disable_bit(true);
+		cpu.pc = Cpu::<B>::read16(mem, Cpu::<B>::BRK_VEC as usize);
+
 		None
 	}
 }
