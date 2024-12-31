@@ -91,7 +91,7 @@ impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Arr<A> {
 		let op = CpuBus::read(mem, addr.expect("ARR requires an address"));
 
 		cpu.a &= op;
-		cpu.a = ((cpu.a & 0x01) << 7) | (cpu.a >> 1);
+		cpu.a = ((cpu.is_carry() as u8) << 7) | (cpu.a >> 1);
 
 		let bit5_6 = (cpu.a >> 5) & 0x03;
 		match bit5_6 {
