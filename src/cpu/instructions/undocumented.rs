@@ -520,10 +520,10 @@ impl<B: CpuBus> AddressOperation<B, IndirectX> for Sax<IndirectX> {
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Sbx<A> {
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {
 		let op = CpuBus::read(mem, addr.expect("SBX requires an address"));
+		let and = cpu.a & cpu.x;
+		let res = and.wrapping_sub(op);
 
-		let res = (cpu.a & cpu.x).wrapping_sub(op);
-
-		cpu.set_carry(res > cpu.x);
+		cpu.set_carry(and >= op);
 		cpu.set_zero(res);
 		cpu.set_negative(res);
 		cpu.x = res;
