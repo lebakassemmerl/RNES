@@ -568,9 +568,13 @@ impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Shx<A> {
 
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {
 		let address = addr.expect("SHX requires an address");
-		let h = (((address + 1) >> 8) & 0xFF) as u8;
+		let val = cpu.x & ((((address >> 8) + 1) & 0xFF) as u8);
 
-		CpuBus::write(mem, address, cpu.x & h);
+		let raw_addr = (address as u16) - (cpu.y as u16);
+		// check if a page-boundary has happened
+		if (raw_addr >> 8) == ((address as u16) >> 8) {
+			CpuBus::write(mem, address, val);
+		}
 
 		None
 	}
@@ -587,9 +591,13 @@ impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Shy<A> {
 
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {
 		let address = addr.expect("SHY requires an address");
-		let h = (((address + 1) >> 8) & 0xFF) as u8;
+		let val = cpu.y & ((((address >> 8) + 1) & 0xFF) as u8);
 
-		CpuBus::write(mem, address, cpu.y & h);
+		let raw_addr = (address as u16) - (cpu.x as u16);
+		// check if a page-boundary has happened
+		if (raw_addr >> 8) == ((address as u16) >> 8) {
+			CpuBus::write(mem, address, val);
+		}
 
 		None
 	}
