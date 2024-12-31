@@ -229,15 +229,12 @@ impl MemoryMap {
 
 impl CpuBus for MemoryMap {
 	fn read(&mut self, addr: usize) -> u8 {
-		#[cfg(feature = "cpu_mem")]
-		print!("CPURD {:04x} ", addr);
-
 		let val = match addr {
 			0x0..=0x1FFF => self.cpu_ram.read(addr),
 			0x2000..=0x3FFF => {
 				let reg = addr & 0x07;
-				match reg {
-					2 => self.ppu_regs.ppu_stat_read(),
+				let ret = match reg {
+					2 => self.ppu_regs.ppu_stat_read() | (self.ppu_regs.io_databus_latch & 0x1F),
 					4 => self.ppu_regs.oam_data_read(),
 					7 => {
 						// read the actual value into the data register and return the previous one
@@ -246,12 +243,16 @@ impl CpuBus for MemoryMap {
 						self.ppu_regs.ppu_data_read(new_data)
 					}
 					_ => {
-						panic!(
+						println!(
 							"CpuBus read(): trying to read from a WO PPU register: {}, addr: {:04x}",
 							reg, addr
-						)
+						);
+						self.ppu_regs.io_databus_latch
 					}
-				}
+				};
+
+				self.ppu_regs.io_databus_latch = ret;
+				ret
 			}
 			0x4000..=0x4013 | 0x4015 => {
 				0
@@ -267,9 +268,6 @@ impl CpuBus for MemoryMap {
 	}
 
 	fn write(&mut self, addr: usize, val: u8) {
-		#[cfg(feature = "cpu_mem")]
-		println!("CPUWR {:04x}, val: {:02x}", addr, val);
-
 		match addr {
 			0x0..=0x1FFF => self.cpu_ram.write(addr, val),
 			0x2000..=0x3FFF => {
@@ -290,9 +288,13 @@ impl CpuBus for MemoryMap {
 						self.ppu_regs.ppu_data_write();
 					}
 					_ => {
-						panic!("CpuBus write(): trying to write to readonly PPU register: {}", reg)
+						println!(
+							"CpuBus write(): trying to write to readonly PPU register: {}",
+							reg
+						);
 					}
-				}
+				};
+				self.ppu_regs.io_databus_latch = val;
 			}
 			0x4014 => {
 				let page = (val as usize) << 8;
@@ -319,9 +321,6 @@ impl CpuBus for MemoryMap {
 
 impl PpuBus for MemoryMap {
 	fn read(&mut self, addr: usize) -> u8 {
-		// #[cfg(feature = "ppu_mem")]
-		// println!("PPURD {:04x}", addr);
-
 		let ret = match addr {
 			0x0000..=0x2FFF => PpuSegment::read(self.cartridge.as_mut(), addr),
 			0x3000..=0x3EFF => PpuSegment::read(self.cartridge.as_mut(), addr - 0x1000),
@@ -339,9 +338,6 @@ impl PpuBus for MemoryMap {
 	}
 
 	fn write(&mut self, addr: usize, val: u8) {
-		// #[cfg(feature = "ppu_mem")]
-		// println!("PPUWR {:04x}, val: {:02x}", addr, val);
-
 		match addr {
 			0x0000..=0x1FFF
 			| 0x2000..=0x23FF

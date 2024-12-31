@@ -40,6 +40,7 @@ pub struct PpuRegisters {
 	pub(crate) x: u8,
 
 	ppudata_buf: u8,
+	pub(crate) io_databus_latch: u8,
 }
 
 macro_rules! ppu_basic_regops {
@@ -377,6 +378,7 @@ impl PpuRegisters {
 			x: 0,
 			w: false,
 			ppudata_buf: 0,
+			io_databus_latch: 0,
 		}
 	}
 
