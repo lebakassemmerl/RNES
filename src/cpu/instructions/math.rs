@@ -246,17 +246,19 @@ impl<B: CpuBus> AddressOperation<B, Implied> for Iny<Implied> {
 
 impl<B: CpuBus, A: AddressMode<B>> Operation<B> for Sbc<A> {
 	fn exec(cpu: &mut Cpu<B>, mem: &mut B, addr: Option<usize>) -> Option<usize> {
-		let op = CpuBus::read(mem, addr.expect("SBC requires an address"));
+		// This operation is exactly the same as ADC except that we have to bitwise invert the
+		// operand. Copy the implementation of ADC here since I have no idea how to do it without
+		// this operand-inverting trick..
 
-		let res16 = (cpu.a as i16) - (op as i16) - (!cpu.is_carry() as i16);
-		let conv_op = ((op as i16) * -1) as u8;
+		let op = !CpuBus::read(mem, addr.expect("SBC requires an address"));
 
-		cpu.set_overflow(cpu.a, conv_op, res16 as u8); // set the bit before the actual operation
+		let res16 = (cpu.a as u16) + (op as u16) + (cpu.is_carry() as u16);
+		cpu.set_overflow(cpu.a, op, res16 as u8); // set the bit before the actual operation
 		cpu.a = res16 as u8;
 
 		cpu.set_negative(cpu.a);
 		cpu.set_zero(cpu.a);
-		cpu.set_carry(res16 >= 0);
+		cpu.set_carry(res16 > 0xFF);
 
 		None
 	}
