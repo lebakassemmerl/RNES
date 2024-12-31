@@ -5,10 +5,11 @@ use super::{Cartridge, CartridgeInfo, LoadRom, PpuMirror};
 pub(crate) struct NRom {
 	prg_ram: BankedMemory,
 	prg_rom: BankedMemory,
-	chr_rom: BankedMemory,
+	chr_mem: BankedMemory,
 	ci_ram: BankedMemory,
 	nt1_idx: usize,
 	nt2_idx: usize,
+	chr_ram: bool,
 }
 
 impl Segment for NRom {
@@ -48,7 +49,7 @@ impl PpuSegment for NRom {
 		let bank_addr = addr % self.ci_ram.bank_size();
 
 		match addr {
-			0..=0x1FFF => self.chr_rom.read(0, addr),
+			0..=0x1FFF => self.chr_mem.read(0, addr),
 			0x2000..=0x23FF | 0x3000..=0x33FF => self.ci_ram.read(0, bank_addr),
 			0x2400..=0x27FF | 0x3400..=0x37FF => self.ci_ram.read(self.nt1_idx, bank_addr),
 			0x2800..=0x2BFF | 0x3800..=0x3BFF => self.ci_ram.read(self.nt2_idx, bank_addr),
@@ -61,7 +62,11 @@ impl PpuSegment for NRom {
 		let bank_addr = addr % self.ci_ram.bank_size();
 
 		match addr {
-			0..=0x1FFF => (),
+			0..=0x1FFF => {
+				if self.chr_ram {
+					self.chr_mem.write(0, addr, val)
+				}
+			}
 			0x2000..=0x23FF | 0x3000..=0x33FF => self.ci_ram.write(0, bank_addr, val),
 			0x2400..=0x27FF | 0x3400..=0x37FF => self.ci_ram.write(self.nt1_idx, bank_addr, val),
 			0x2800..=0x2BFF | 0x3800..=0x3BFF => self.ci_ram.write(self.nt2_idx, bank_addr, val),
@@ -80,6 +85,7 @@ impl PpuSegment for NRom {
 impl LoadRom for NRom {
 	fn load(data: &[u8], info: &CartridgeInfo) -> Box<dyn Cartridge> {
 		println!("Load NROM ROM");
+		println!("{:?}", info);
 
 		assert_input(data, info);
 
@@ -90,6 +96,19 @@ impl LoadRom for NRom {
 		};
 
 		let prg_rom_bytes = info.prg_rom_cnt * PRG_ROM_BANK_SIZE;
+
+		let (chr_mem, chr_ram) = if info.chr_rom_cnt == 0 {
+			// no CHR-ROM present -> use a CHR-RAM with 8KB
+			(BankedMemory::empty(CHR_ROM_BANK_SIZE, 1), true)
+		} else { 
+			// initialize the chr_rom with the given data from the NES file
+			(BankedMemory::load(
+				&data[prg_rom_bytes..(prg_rom_bytes + info.chr_rom_cnt * CHR_ROM_BANK_SIZE)],
+				CHR_ROM_BANK_SIZE,
+				info.chr_rom_cnt,
+			), false)
+		};
+
 		Box::new(Self {
 			// always only 1 RAM bank, actually the size SHOULD be 2KB or
 			// with the 'Family Basic' edition 4KB but most emulators
@@ -100,14 +119,11 @@ impl LoadRom for NRom {
 				PRG_ROM_BANK_SIZE,
 				info.prg_rom_cnt,
 			),
-			chr_rom: BankedMemory::load(
-				&data[prg_rom_bytes..(prg_rom_bytes + info.chr_rom_cnt * CHR_ROM_BANK_SIZE)],
-				CHR_ROM_BANK_SIZE,
-				info.chr_rom_cnt,
-			),
+			chr_mem,
 			ci_ram: BankedMemory::empty(CI_RAM_BANK_SIZE, CI_RAM_BANK_CNT),
 			nt1_idx: nt1,
 			nt2_idx: nt2,
+			chr_ram,
 		})
 	}
 }
@@ -141,7 +157,7 @@ fn assert_input(data: &[u8], info: &CartridgeInfo) {
 		data.len()
 	);
 
-	assert!(info.chr_rom_cnt <= 1, "NROM supports maximu 1 CHR_ROM bank");
+	assert!(info.chr_rom_cnt <= 1, "NROM supports maximum 1 CHR_ROM bank");
 
 	match info.ppu_mirror {
 		PpuMirror::Horizontal | PpuMirror::Vertical => (),
